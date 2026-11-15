@@ -252,3 +252,92 @@ class SimpleRAGSystem:
             "dimensions": model_info["dimensions"],
             "model": self.embedding_model,
         }
+        
+def main():
+    st.title("🤖 Simple RAG System")
+
+    # Initialize session state
+    if "processed_files" not in st.session_state:
+        st.session_state.processed_files = set()
+    if "current_embedding_model" not in st.session_state:
+        st.session_state.current_embedding_model = None
+    if "rag_system" not in st.session_state:
+        st.session_state.rag_system = None
+
+    # Initialize model selector
+    model_selector = SimpleModelSelector()
+    llm_model, embedding_model = model_selector.select_models()
+
+    # Check if embedding model changed
+    if embedding_model != st.session_state.current_embedding_model:
+        st.session_state.processed_files.clear()  # Clear processed files
+        st.session_state.current_embedding_model = embedding_model
+        st.session_state.rag_system = None  # Reset RAG system
+        st.warning("Embedding model changed. Please re-upload your documents.")
+
+    # Initialize RAG system
+    try:
+        if st.session_state.rag_system is None:
+            st.session_state.rag_system = SimpleRAGSystem(embedding_model, llm_model)
+
+        # Display current embedding model info
+        embedding_info = st.session_state.rag_system.get_embedding_info()
+        st.sidebar.info(
+            f"Current Embedding Model:\n"
+            f"- Name: {embedding_info['name']}\n"
+            f"- Dimensions: {embedding_info['dimensions']}"
+        )
+    except Exception as e:
+        st.error(f"Error initializing RAG system: {str(e)}")
+        return
+
+    # File upload
+    pdf_file = st.file_uploader("Upload PDF", type="pdf")
+
+    if pdf_file and pdf_file.name not in st.session_state.processed_files:
+        # Process PDF
+        processor = SimplePDFProcessor()
+        with st.spinner("Processing PDF..."):
+            try:
+                # Extract text
+                text = processor.read_pdf(pdf_file)
+                # Create chunks
+                chunks = processor.create_chunks(text, pdf_file)
+                # Add to database
+                if st.session_state.rag_system.add_documents(chunks):
+                    st.session_state.processed_files.add(pdf_file.name)
+                    st.success(f"Successfully processed {pdf_file.name}")
+            except Exception as e:
+                st.error(f"Error processing PDF: {str(e)}")
+
+    # Query interface
+    if st.session_state.processed_files:
+        st.markdown("---")
+        st.subheader("🔍 Query Your Documents")
+        query = st.text_input("Ask a question:")
+
+        if query:
+            with st.spinner("Generating response..."):
+                # Get relevant chunks
+                results = st.session_state.rag_system.query_documents(query)
+                if results and results["documents"]:
+                    # Generate response
+                    response = st.session_state.rag_system.generate_response(
+                        query, results["documents"][0]
+                    )
+
+                    if response:
+                        # Display results
+                        st.markdown("### 📝 Answer:")
+                        st.write(response)
+
+                        with st.expander("View Source Passages"):
+                            for idx, doc in enumerate(results["documents"][0], 1):
+                                st.markdown(f"**Passage {idx}:**")
+                                st.info(doc)
+    else:
+        st.info("👆 Please upload a PDF document to get started!")
+
+
+if __name__ == "__main__":
+    main()
