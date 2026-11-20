@@ -9,8 +9,8 @@ services:
 
     environment:
       OLLAMA_HOST: 0.0.0.0:11434
-      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE}
-      OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL}
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-10m}
+      OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-2}
 
     volumes:
       - ollama_data:/root/.ollama
@@ -19,7 +19,7 @@ services:
       sh -c "
         ollama serve &
         sleep 5 &&
-        ollama pull ${OLLAMA_MODEL} &&
+        ollama pull ${OLLAMA_MODEL:-qwen2.5:7b} &&
         wait
       "
 
@@ -31,7 +31,7 @@ services:
 
     environment:
       OLLAMA_URL: http://ollama:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
 
     ports:
       - "8000:8000"
