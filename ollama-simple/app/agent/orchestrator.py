@@ -19,6 +19,9 @@ TOOLS = {
 
 
 def run_agent(prompt: str):
+    
+    print("========== RUN_AGENT STARTED ==========", flush=True)
+    print(f"PROMPT: {prompt}", flush=True)
 
     messages = [
         {
@@ -37,7 +40,11 @@ def run_agent(prompt: str):
         }
     ]
 
-    for _ in range(5):
+    for _index in range(5):
+        
+        print(f"\n========== AGENT ITERATION {_index} ==========", flush=True)
+        print("MESSAGES:", flush=True)
+        print(messages, flush=True)
 
         response = client.chat(
             model=MODEL,

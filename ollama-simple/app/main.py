@@ -39,7 +39,12 @@ def chat(prompt: str):
 
 @app.get("/agent")
 def agent(prompt: str):
+
+    print("========== MAIN: AGENT ENDPOINT CALLED ==========", flush=True)
+
     response = run_agent(prompt)
+
+    print("========== MAIN: AGENT FINISHED ==========", flush=True)
 
     return {
         "response": response
