@@ -37,7 +37,7 @@ services:
               count: 1
               capabilities: [gpu]
 
-    # Wait until the configured model is available before starting the Python application.
+    # Check whether the configured model is available.
     healthcheck:
       test:
         - CMD-SHELL
@@ -56,11 +56,15 @@ services:
     environment:
       OLLAMA_URL: http://ollama:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
+      DATABASE_URL: sqlite:////app/data/database.db
 
     ports:
       - "8000:8000"
 
-    # Wait until Ollama is healthy before starting the Python application.
+    volumes:
+      - sqlite_data:/app/data
+
+    # Wait until Ollama and its model are ready.
     depends_on:
       ollama:
         condition: service_healthy
@@ -69,3 +73,4 @@ services:
 
 volumes:
   ollama_data:
+  sqlite_data:
