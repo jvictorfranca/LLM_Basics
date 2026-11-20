@@ -1,27 +1,51 @@
-services:
 
+services:
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
 
-    ports:
-      - "11434:11434"
+    entrypoint: ["/bin/sh", "-c"]
+
+    command:
+      - |
+        ollama serve &
+        until ollama list >/dev/null 2>&1; do
+          sleep 1
+        done
+        ollama pull "$$OLLAMA_MODEL"
+        wait
 
     environment:
       OLLAMA_HOST: 0.0.0.0:11434
       OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-10m}
       OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-2}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
+
+    ports:
+      - "11434:11434"
 
     volumes:
       - ollama_data:/root/.ollama
 
-    command: >
-      sh -c "
-        ollama serve &
-        sleep 5 &&
-        ollama pull ${OLLAMA_MODEL:-qwen2.5:7b} &&
-        wait
-      "
+    # Enable NVIDIA GPU acceleration for LLM inference.
+    # Requires NVIDIA Container Toolkit on the host machine.
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+    # Wait until the configured model is available before starting the Python application.
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - ollama show "$$OLLAMA_MODEL" >/dev/null 2>&1
+      interval: 10s
+      timeout: 10s
+      retries: 60
+      start_period: 30s
 
     restart: unless-stopped
 
@@ -36,8 +60,10 @@ services:
     ports:
       - "8000:8000"
 
+    # Wait until Ollama is healthy before starting the Python application.
     depends_on:
-      - ollama
+      ollama:
+        condition: service_healthy
 
     restart: unless-stopped
 
